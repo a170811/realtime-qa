@@ -17,8 +17,15 @@
         <p class="mt-1 text-sm text-slate-500">你的理財知識問答夥伴</p>
       </div>
 
-      <!-- API Key Input (shown when disconnected) -->
+      <!-- Connection Settings (shown when disconnected) -->
       <div id="apiKeySection" class="w-full flex flex-col gap-3">
+        <label for="baseUrlInput" class="text-sm font-medium text-slate-600">Base URL</label>
+        <input
+          id="baseUrlInput"
+          type="url"
+          placeholder="https://api.openai.com（留空使用預設）"
+          class="w-full h-11 px-4 rounded-lg border border-slate-200 bg-white text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 transition-shadow"
+        />
         <label for="apiKeyInput" class="text-sm font-medium text-slate-600">Ephemeral API Key</label>
         <input
           id="apiKeyInput"

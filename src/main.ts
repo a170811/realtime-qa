@@ -4,6 +4,7 @@ import {
   disconnectButton,
   muteButton,
   apiKeyInput,
+  baseUrlInput,
   setUIState,
   setSpeaking,
   showApiKeyError,
@@ -13,6 +14,7 @@ import {
 
 import { z } from 'zod';
 import { RealtimeAgent, RealtimeSession, tool } from '@openai/agents-realtime';
+import { OpenAIRealtimeWebRTC } from '@openai/agents-realtime';
 import { listArticles, fetchArticleContent } from './articles';
 
 // --- Tools ---
@@ -59,17 +61,8 @@ p.s. 回覆使用者時，請自然地回答就好，不要讓使用者感覺到
   tools: [listArticlesTool, getArticleContentTool],
 });
 
-// --- Session ---
-const session = new RealtimeSession(qaAgent);
-
-// Track AI speaking state for waveform color
-session.on('transport_event', (event) => {
-  if (event.type === 'response.audio.delta') {
-    setSpeaking(true);
-  } else if (event.type === 'response.audio.done') {
-    setSpeaking(false);
-  }
-});
+// --- Session (created on connect) ---
+let session: RealtimeSession | null = null;
 
 // --- Button handlers ---
 connectButton.addEventListener('click', async () => {
@@ -81,22 +74,42 @@ connectButton.addEventListener('click', async () => {
   hideApiKeyError();
   setUIState('connecting');
 
+  const baseUrl = baseUrlInput.value.trim();
+
+  session = new RealtimeSession(qaAgent, {
+    ...(baseUrl && {
+      transport: new OpenAIRealtimeWebRTC({ baseUrl }),
+    }),
+  });
+
+  // Track AI speaking state for waveform color
+  session.on('transport_event', (event) => {
+    if (event.type === 'response.audio.delta') {
+      setSpeaking(true);
+    } else if (event.type === 'response.audio.done') {
+      setSpeaking(false);
+    }
+  });
+
   try {
     await session.connect({ apiKey });
     setUIState('unmuted');
   } catch (err) {
     console.error('Connection failed:', err);
     showApiKeyError(`連線失敗：${err instanceof Error ? err.message : err}`);
+    session = null;
     setUIState('disconnected');
   }
 });
 
 disconnectButton.addEventListener('click', () => {
-  session.close();
+  session?.close();
+  session = null;
   setUIState('disconnected');
 });
 
 muteButton.addEventListener('click', () => {
+  if (!session) return;
   const newMutedState = !session.muted;
   session.mute(newMutedState);
   setUIState(newMutedState ? 'muted' : 'unmuted');
@@ -104,5 +117,8 @@ muteButton.addEventListener('click', () => {
 
 // Allow Enter key to connect
 apiKeyInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') connectButton.click();
+});
+baseUrlInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') connectButton.click();
 });

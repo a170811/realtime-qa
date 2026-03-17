@@ -3,6 +3,7 @@ export const disconnectButton = document.querySelector<HTMLButtonElement>('#disc
 export const muteButton = document.querySelector<HTMLButtonElement>('#muteButton')!;
 
 const apiKeySection = document.querySelector<HTMLDivElement>('#apiKeySection')!;
+export const baseUrlInput = document.querySelector<HTMLInputElement>('#baseUrlInput')!;
 export const apiKeyInput = document.querySelector<HTMLInputElement>('#apiKeyInput')!;
 const apiKeyError = document.querySelector<HTMLParagraphElement>('#apiKeyError')!;
 
