@@ -10,9 +10,9 @@ const env = Object.fromEntries(
     .map(l => l.split('='))
 );
 
-const apiKey = env['VITE_API_KEY'];
+const apiKey = env['OPENAI_API_KEY'];
 if (!apiKey) {
-  console.error('Missing API_KEY in .env');
+  console.error('Missing OPENAI_API_KEY in .env');
   process.exit(1);
 }
 
