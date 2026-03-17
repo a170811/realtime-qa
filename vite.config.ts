@@ -1,5 +1,56 @@
-import { defineConfig, loadEnv, Plugin } from 'vite';
+import fs from 'node:fs';
+import path from 'node:path';
+import { defineConfig, Plugin } from 'vite';
 import tailwindcss from '@tailwindcss/vite';
+
+function parseEnvFile(filePath: string): Record<string, string> {
+  if (!fs.existsSync(filePath)) return {};
+
+  const result: Record<string, string> = {};
+  const lines = fs.readFileSync(filePath, 'utf8').split(/\r?\n/);
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith('#')) continue;
+
+    const separatorIndex = line.indexOf('=');
+    if (separatorIndex === -1) continue;
+
+    const key = line.slice(0, separatorIndex).trim();
+    if (!key) continue;
+
+    let value = line.slice(separatorIndex + 1).trim();
+    if (
+      (value.startsWith('"') && value.endsWith('"')) ||
+      (value.startsWith("'") && value.endsWith("'"))
+    ) {
+      value = value.slice(1, -1);
+    }
+
+    result[key] = value;
+  }
+
+  return result;
+}
+
+function loadPreferredEnv(mode: string, envDir: string): Record<string, string | undefined> {
+  const envFiles = [
+    '.env',
+    '.env.local',
+    `.env.${mode}`,
+    `.env.${mode}.local`,
+  ];
+
+  const fileEnv = envFiles.reduce<Record<string, string>>((acc, fileName) => {
+    const filePath = path.resolve(envDir, fileName);
+    return { ...acc, ...parseEnvFile(filePath) };
+  }, {});
+
+  return {
+    ...process.env,
+    ...fileEnv,
+  };
+}
 
 function tokenEndpoint(): Plugin {
   let apiKey: string;
@@ -9,7 +60,7 @@ function tokenEndpoint(): Plugin {
   return {
     name: 'token-endpoint',
     configResolved({ envDir, mode }) {
-      const env = loadEnv(mode, envDir, '');
+      const env = loadPreferredEnv(mode, envDir);
       apiKey = env.OPENAI_API_KEY;
       rawBaseUrl = env.BASE_URL || '';
       baseUrl = (rawBaseUrl || 'https://api.openai.com').replace(/\/+$/, '');

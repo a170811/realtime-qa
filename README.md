@@ -44,23 +44,15 @@ node scripts/scrape-top-articles.js --top 3
 
 爬取結果會存放在 `output/top-articles-{timestamp}.json`。
 
-### Step 2：產生 Ephemeral API Key
-
-Realtime API 需要使用短效 token，請執行：
-
-```bash
-npm run token
-```
-
-複製輸出的 key，待連線時使用。
-
-### Step 3：啟動開發伺服器
+### Step 2：啟動開發伺服器
 
 ```bash
 npm run dev
 ```
 
-開啟瀏覽器後，點擊 **Connect** 按鈕，貼入剛才產生的 ephemeral key 即可開始語音對話。
+開啟瀏覽器後，點擊 **Connect** 按鈕即可開始語音對話。
+
+開發伺服器會在連線時自動向 `/api/token` 取得短效 token，並優先使用 `.env` 內的 `OPENAI_API_KEY` 與 `BASE_URL`；若 `.env` 沒有設定，才會 fallback 到系統環境變數。
 
 ### 連線後的操作
 
