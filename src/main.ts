@@ -3,12 +3,10 @@ import {
   connectButton,
   disconnectButton,
   muteButton,
-  apiKeyInput,
-  baseUrlInput,
   setUIState,
   setSpeaking,
-  showApiKeyError,
-  hideApiKeyError,
+  showError,
+  hideError,
   showCitations,
 } from './utils';
 
@@ -64,39 +62,43 @@ p.s. 回覆使用者時，請自然地回答就好，不要讓使用者感覺到
 // --- Session (created on connect) ---
 let session: RealtimeSession | null = null;
 
+async function fetchToken(): Promise<{ token: string; baseUrl?: string }> {
+  const res = await fetch('/api/token');
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error ?? 'Failed to fetch token');
+  return data;
+}
+
 // --- Button handlers ---
 connectButton.addEventListener('click', async () => {
-  const apiKey = apiKeyInput.value.trim();
-  if (!apiKey) {
-    showApiKeyError('請輸入 API Key');
-    return;
-  }
-  hideApiKeyError();
+  hideError();
   setUIState('connecting');
 
-  const baseUrl = baseUrlInput.value.trim();
-
-  session = new RealtimeSession(qaAgent, {
-    ...(baseUrl && {
-      transport: new OpenAIRealtimeWebRTC({ baseUrl }),
-    }),
-  });
-
-  // Track AI speaking state for waveform color
-  session.on('transport_event', (event) => {
-    if (event.type === 'response.audio.delta') {
-      setSpeaking(true);
-    } else if (event.type === 'response.audio.done') {
-      setSpeaking(false);
-    }
-  });
-
   try {
-    await session.connect({ apiKey });
+    const { token, baseUrl } = await fetchToken();
+
+    session = new RealtimeSession(qaAgent, {
+      ...(baseUrl && {
+        transport: new OpenAIRealtimeWebRTC({
+          baseUrl: `${baseUrl.replace(/\/+$/, '')}/v1/realtime/calls`,
+        }),
+      }),
+    });
+
+    // Track AI speaking state for waveform color
+    session.on('transport_event', (event) => {
+      if (event.type === 'response.audio.delta') {
+        setSpeaking(true);
+      } else if (event.type === 'response.audio.done') {
+        setSpeaking(false);
+      }
+    });
+
+    await session.connect({ apiKey: token });
     setUIState('unmuted');
   } catch (err) {
     console.error('Connection failed:', err);
-    showApiKeyError(`連線失敗：${err instanceof Error ? err.message : err}`);
+    showError(`連線失敗：${err instanceof Error ? err.message : err}`);
     session = null;
     setUIState('disconnected');
   }
@@ -113,12 +115,4 @@ muteButton.addEventListener('click', () => {
   const newMutedState = !session.muted;
   session.mute(newMutedState);
   setUIState(newMutedState ? 'muted' : 'unmuted');
-});
-
-// Allow Enter key to connect
-apiKeyInput.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') connectButton.click();
-});
-baseUrlInput.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') connectButton.click();
 });

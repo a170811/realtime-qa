@@ -2,10 +2,7 @@ export const connectButton = document.querySelector<HTMLButtonElement>('#connect
 export const disconnectButton = document.querySelector<HTMLButtonElement>('#disconnectButton')!;
 export const muteButton = document.querySelector<HTMLButtonElement>('#muteButton')!;
 
-const apiKeySection = document.querySelector<HTMLDivElement>('#apiKeySection')!;
-export const baseUrlInput = document.querySelector<HTMLInputElement>('#baseUrlInput')!;
-export const apiKeyInput = document.querySelector<HTMLInputElement>('#apiKeyInput')!;
-const apiKeyError = document.querySelector<HTMLParagraphElement>('#apiKeyError')!;
+const errorText = document.querySelector<HTMLParagraphElement>('#errorText')!;
 
 const waveform = document.querySelector<HTMLDivElement>('#waveform')!;
 const waveformBars = waveform.querySelectorAll<HTMLSpanElement>('.waveform-bar');
@@ -20,9 +17,6 @@ const citationsList = document.querySelector<HTMLUListElement>('#citationsList')
 export type UIState = 'disconnected' | 'connecting' | 'unmuted' | 'muted';
 
 export function setUIState(state: UIState) {
-  // API key section
-  apiKeySection.classList.toggle('hidden', state !== 'disconnected');
-
   // Waveform
   const showWaveform = state === 'unmuted' || state === 'muted';
   waveform.classList.toggle('hidden', !showWaveform);
@@ -74,13 +68,13 @@ export function setSpeaking(isSpeaking: boolean) {
   statusText.textContent = isSpeaking ? '回答中...' : '聆聽中...';
 }
 
-export function showApiKeyError(message: string) {
-  apiKeyError.textContent = message;
-  apiKeyError.classList.remove('hidden');
+export function showError(message: string) {
+  errorText.textContent = message;
+  errorText.classList.remove('hidden');
 }
 
-export function hideApiKeyError() {
-  apiKeyError.classList.add('hidden');
+export function hideError() {
+  errorText.classList.add('hidden');
 }
 
 export function showCitations(articles: { title: string }[]) {

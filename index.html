@@ -17,27 +17,11 @@
         <p class="mt-1 text-sm text-slate-500">你的理財知識問答夥伴</p>
       </div>
 
-      <!-- Connection Settings (shown when disconnected) -->
-      <div id="apiKeySection" class="w-full flex flex-col gap-3">
-        <label for="baseUrlInput" class="text-sm font-medium text-slate-600">Base URL</label>
-        <input
-          id="baseUrlInput"
-          type="url"
-          placeholder="https://api.openai.com（留空使用預設）"
-          class="w-full h-11 px-4 rounded-lg border border-slate-200 bg-white text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 transition-shadow"
-        />
-        <label for="apiKeyInput" class="text-sm font-medium text-slate-600">Ephemeral API Key</label>
-        <input
-          id="apiKeyInput"
-          type="password"
-          placeholder="貼上你的 API Key..."
-          class="w-full h-11 px-4 rounded-lg border border-slate-200 bg-white text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 transition-shadow"
-        />
-        <p id="apiKeyError" class="text-xs text-red-500 hidden"></p>
-      </div>
+      <!-- Error display -->
+      <p id="errorText" class="text-xs text-red-500 hidden"></p>
 
       <!-- Waveform -->
-      <div id="waveform" class="flex items-center justify-center gap-[5px] h-16 hidden" aria-hidden="true">
+      <div id="waveform" class="items-center justify-center gap-[5px] h-16 hidden" aria-hidden="true">
         <span class="waveform-bar"></span>
         <span class="waveform-bar"></span>
         <span class="waveform-bar"></span>
