@@ -15,8 +15,9 @@ import { RealtimeAgent, RealtimeSession, tool } from '@openai/agents-realtime';
 import { OpenAIRealtimeWebRTC, OpenAIRealtimeWebSocket } from '@openai/agents-realtime';
 import { startAudio, stopAudio, setMuted, isMuted } from './ws-audio';
 
-const useWebSocket = import.meta.env.VITE_TRANSPORT === 'websocket';
 import { listArticles, fetchArticleContent } from './articles';
+
+const useWebSocket = import.meta.env.VITE_TRANSPORT === 'websocket';
 
 // --- Tools ---
 const listArticlesTool = tool({
@@ -123,6 +124,8 @@ connectButton.addEventListener('click', async () => {
   } catch (err) {
     console.error('Connection failed:', err);
     showError(`連線失敗：${err instanceof Error ? err.message : err}`);
+    if (useWebSocket) stopAudio();
+    session?.close();
     session = null;
     setUIState('disconnected');
   }
