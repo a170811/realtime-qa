@@ -50,14 +50,14 @@ const useWebSocket = import.meta.env.VITE_TRANSPORT === 'websocket';
 
 **Session creation:**
 - WebRTC (default): Same as current code — pass `OpenAIRealtimeWebRTC` instance when `baseUrl` is set, otherwise let SDK auto-select
-- WebSocket: Pass `transport: 'websocket'` (or `new OpenAIRealtimeWebSocket({ url })` when `baseUrl` is set)
+- WebSocket: Pass `transport: 'websocket'` (or `new OpenAIRealtimeWebSocket({ url: '${baseUrl}/v1/realtime' })` when `baseUrl` is set)
 
 **Post-connect:**
 - WebSocket mode: Call `startAudio(session)` from `ws-audio.ts`
 
 **Mute button:**
 - WebRTC: `session.mute(newMutedState)` (unchanged)
-- WebSocket: `setMuted(newMutedState)` from `ws-audio.ts`
+- WebSocket: `setMuted(newMutedState)` from `ws-audio.ts`. Note: `session.muted` returns `null` for WebSocket transport, and `session.mute()` throws. The mute toggle must use `isMuted()` from `ws-audio.ts` to read current state, never `session.muted`.
 
 **Disconnect:**
 - WebSocket mode: Call `stopAudio()` before `session.close()`
@@ -72,6 +72,7 @@ const useWebSocket = import.meta.env.VITE_TRANSPORT === 'websocket';
 export function startAudio(session: RealtimeSession): Promise<void>
 export function stopAudio(): void
 export function setMuted(muted: boolean): void
+export function isMuted(): boolean
 ```
 
 **Microphone capture (input):**
@@ -94,12 +95,13 @@ Created via inline Blob URL (no extra file needed). The processor:
 **Audio playback (output):**
 
 1. Create a separate `AudioContext` for playback (separate from mic context to avoid feedback)
-2. Listen to `session.on('audio', callback)` for base64-encoded PCM16 chunks
-3. Decode: base64 → `ArrayBuffer` → `Int16Array` → `Float32Array` (divide by 0x7FFF)
+2. Listen to `session.on('audio', callback)` for `TransportLayerAudio` events (data is `ArrayBuffer`, not base64)
+3. Decode: `ArrayBuffer` → `Int16Array` → `Float32Array` (divide by 0x7FFF)
 4. Create `AudioBuffer` (24kHz, mono), fill with Float32 data
 5. Create `AudioBufferSourceNode`, connect to destination, schedule at `nextPlayTime`
 6. Track `nextPlayTime` to ensure gapless playback between chunks
 7. On `response.audio.done` (via `transport_event`): reset `nextPlayTime`
+8. On `audio_interrupted` event: flush playback queue and reset `nextPlayTime` immediately (barge-in support)
 
 **Resource cleanup (`stopAudio`):**
 
@@ -107,12 +109,21 @@ Created via inline Blob URL (no extra file needed). The processor:
 - Stop all MediaStream tracks
 - Remove session event listeners
 - Reset all module state
+- Must be idempotent — safe to call multiple times or if partially initialized
 
 ### Error Handling
 
 - **`getUserMedia` failure** (permission denied): Call `showError()` with error message, throw to let `main.ts` catch and reset to disconnected state
 - **AudioContext blocked by autoplay policy**: Call `audioContext.resume()` in `startAudio` — safe because it's triggered by user click on "connect" button
 - **No retry/reconnect logic**: Matches WebRTC behavior
+
+### Audio Format Configuration
+
+The OpenAI Realtime API defaults to PCM16 24kHz mono. The session config should explicitly set `input_audio_format: 'pcm16'` and `output_audio_format: 'pcm16'` to ensure consistency with the AudioContext sample rates used in `ws-audio.ts`.
+
+### Known Limitations
+
+- **CSP restrictions**: The inline Blob URL for AudioWorklet processor may be blocked by strict Content-Security-Policy headers that disallow `blob:` worker sources. If this becomes an issue, the processor can be moved to a separate `.js` file served by Vite.
 
 ## Testing Considerations
 
