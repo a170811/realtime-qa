@@ -12,7 +12,10 @@ import {
 
 import { z } from 'zod';
 import { RealtimeAgent, RealtimeSession, tool } from '@openai/agents-realtime';
-import { OpenAIRealtimeWebRTC } from '@openai/agents-realtime';
+import { OpenAIRealtimeWebRTC, OpenAIRealtimeWebSocket } from '@openai/agents-realtime';
+import { startAudio, stopAudio, setMuted, isMuted } from './ws-audio';
+
+const useWebSocket = import.meta.env.VITE_TRANSPORT === 'websocket';
 import { listArticles, fetchArticleContent } from './articles';
 
 // --- Tools ---
@@ -78,10 +81,28 @@ connectButton.addEventListener('click', async () => {
     const { token, baseUrl } = await fetchToken();
 
     session = new RealtimeSession(qaAgent, {
-      ...(baseUrl && {
-        transport: new OpenAIRealtimeWebRTC({
-          baseUrl: `${baseUrl.replace(/\/+$/, '')}/v1/realtime/calls`,
-        }),
+      ...(useWebSocket
+        ? baseUrl
+          ? {
+              transport: new OpenAIRealtimeWebSocket({
+                url: `${baseUrl.replace(/\/+$/, '')}/v1/realtime`,
+              }),
+            }
+          : { transport: 'websocket' as const }
+        : baseUrl
+          ? {
+              transport: new OpenAIRealtimeWebRTC({
+                baseUrl: `${baseUrl.replace(/\/+$/, '')}/v1/realtime/calls`,
+              }),
+            }
+          : {}),
+      ...(useWebSocket && {
+        config: {
+          audio: {
+            input: { format: 'pcm16' },
+            output: { format: 'pcm16' },
+          },
+        },
       }),
     });
 
@@ -95,6 +116,9 @@ connectButton.addEventListener('click', async () => {
     });
 
     await session.connect({ apiKey: token });
+    if (useWebSocket) {
+      await startAudio(session);
+    }
     setUIState('unmuted');
   } catch (err) {
     console.error('Connection failed:', err);
@@ -105,6 +129,7 @@ connectButton.addEventListener('click', async () => {
 });
 
 disconnectButton.addEventListener('click', () => {
+  if (useWebSocket) stopAudio();
   session?.close();
   session = null;
   setUIState('disconnected');
@@ -112,7 +137,13 @@ disconnectButton.addEventListener('click', () => {
 
 muteButton.addEventListener('click', () => {
   if (!session) return;
-  const newMutedState = !session.muted;
-  session.mute(newMutedState);
-  setUIState(newMutedState ? 'muted' : 'unmuted');
+  if (useWebSocket) {
+    const newMutedState = !isMuted();
+    setMuted(newMutedState);
+    setUIState(newMutedState ? 'muted' : 'unmuted');
+  } else {
+    const newMutedState = !session.muted;
+    session.mute(newMutedState);
+    setUIState(newMutedState ? 'muted' : 'unmuted');
+  }
 });
