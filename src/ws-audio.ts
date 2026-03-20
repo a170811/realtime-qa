@@ -36,29 +36,33 @@ export function setMuted(value: boolean): void {
 }
 
 export async function startAudio(session: RealtimeSession): Promise<void> {
+  stopAudio();
   currentSession = session;
   muted = false;
 
-  // Mic capture
-  micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-  micContext = new AudioContext({ sampleRate: 24000 });
-  await micContext.resume();
+  try {
+    micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    micContext = new AudioContext({ sampleRate: 24000 });
+    await micContext.resume();
 
-  const blob = new Blob([WORKLET_PROCESSOR], { type: 'application/javascript' });
-  const workletUrl = URL.createObjectURL(blob);
-  await micContext.audioWorklet.addModule(workletUrl);
-  URL.revokeObjectURL(workletUrl);
+    const blob = new Blob([WORKLET_PROCESSOR], { type: 'application/javascript' });
+    const workletUrl = URL.createObjectURL(blob);
+    await micContext.audioWorklet.addModule(workletUrl);
+    URL.revokeObjectURL(workletUrl);
 
-  workletNode = new AudioWorkletNode(micContext, 'pcm16-processor');
-  workletNode.port.onmessage = (e: MessageEvent<ArrayBuffer>) => {
-    if (!muted && currentSession) {
-      currentSession.sendAudio(e.data);
-    }
-  };
+    workletNode = new AudioWorkletNode(micContext, 'pcm16-processor');
+    workletNode.port.onmessage = (e: MessageEvent<ArrayBuffer>) => {
+      if (!muted && currentSession) {
+        currentSession.sendAudio(e.data);
+      }
+    };
 
-  const source = micContext.createMediaStreamSource(micStream);
-  source.connect(workletNode);
-  // Don't connect workletNode to destination — we don't want to hear our own mic
+    const source = micContext.createMediaStreamSource(micStream);
+    source.connect(workletNode);
+  } catch (err) {
+    stopAudio();
+    throw err;
+  }
 }
 
 export function stopAudio(): void {
